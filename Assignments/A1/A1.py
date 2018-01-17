@@ -18,18 +18,39 @@ def createSock():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     return sock
 
+def connectHTTPS():
+    conn = createSSL()
+    conn.connect((args.host, 443))
+    return conn
+
+def connectHTTP():
+    sock = createSock()
+    sock.connect((args.host, 80))
+    return sock
+
+def receive(conn):
+    response = conn.recv(1024)
+    while(response):
+        pprint.pprint(response.split(b"\r\n"))
+        response = conn.recv(1024)
+
 def main():
     try:
-        conn = connectSSL()
-        conn.connect((args.host, 443))
-        conn.sendall(b"HEAD / HTTP/1.1\r\nHost: " + args.host + "\r\n\r\n")
-        pprint.pprint(conn.recv(1024).split(b"\r\n"))
+        conn = connectHTTPS()
+        print("SSL Connected")
+        conn.sendall(b"HEAD / HTTP/1.0\r\nHost: " + args.host.encode() + b"\r\n\r\n")
+        print("SSL Message Sent")
+        receive(conn)
+        print("SSL Message Received")
         conn.close()
+
     except:
-        sock = createSock()
-        sock.connect((args.host, 80))
-        sock.sendall(b"HEAD / HTTP/1.1\r\nHost: " + args.host + "\r\n\r\n")
-        pprint.pprint(sock.recv(1024).split(b"\r\n"))
+        sock = connectHTTP()
+        print("Non-SSL Connected")
+        sock.sendall(b"HEAD / HTTP/1.0\r\nHost: " + args.host.encode() + b"\r\n\r\n")
+        print("Non-SSL Message Sent")
+        receive(conn)
+        print("Non-SSL Message Received")
         sock.close()
 
 main()
