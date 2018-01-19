@@ -9,12 +9,14 @@ VERSION_SUCCESS = [200, 404]
 
 def createSSL(host):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
     context = ssl.create_default_context()
     conn = context.wrap_socket(sock, server_hostname=host)
     return conn
 
 def createSock():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
     return sock
 
 def connectHTTPS(host):
@@ -26,18 +28,6 @@ def connectHTTP(host):
     sock = createSock()
     sock.connect((host, 80))
     return sock
-
-def receive(conn):
-    resp = b""
-    while True:
-        received = conn.recv(4096)
-        resp += received
-        pprint.pprint(received)
-        if received:
-            pass
-        else:
-            break
-    return resp.split(b"\r\n\r\n")
 
 #Returns:
 #   0 if Does Not Support
@@ -82,12 +72,16 @@ def sendRequest(https, method, version, host):
         b"\r\n\r\n"
     )
     resp = b""
-    while True:
-        received = conn.recv(64)
-        if received != b"\r\n\r\n":
-            resp += received
-        else:
-            break
+    try:
+        while True:
+            received = conn.recv(1024)
+            if received:
+                resp += received
+            else:
+                break
+    except socket.timeout:
+        pass
+    pprint.pprint(resp.split(b"\r\n\r\n"))
     return resp.split(b"\r\n\r\n")
     
 def versionHTML(supportHTTPS, host):
