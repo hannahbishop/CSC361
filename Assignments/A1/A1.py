@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 #global constants
 HTTPS_SUCCESS = [200, 404, 505]
+REDIRECT = [301, 302]
 VERSION_SUCCESS = [200, 404]
 
 def createSSL(host):
@@ -42,17 +43,27 @@ def supportHTTPS(host):
             "1.1", 
             host
         )
+        print("Response: \n" + resp)
     except:
-        print("supportHTTPS() exception")
+        print("Support HTTPS: no")
         return 0
-    status = getStatusCode(resp)
+    status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
     if status in HTTPS_SUCCESS: 
-        print("HTTP Status Code: " + str(status))
-        print("Supports HTTPS: yes")
+        print(
+            "HTTP Status Code: " + str(status),
+            "Support HTTPS: yes"
+        )
         return 1
-    elif status == 302:
+    elif status in REDIRECT:
         o = urlparse(re.search(r"Location: (.*)", resp).group(1))
-        return o.netloc
+        if o.scheme == 'http':
+            #redirect url is http, so https not supported
+            print("Support HTTPS: no")
+            return o
+        if o.scheme == 'https':
+            #needs further checking
+            return o
+        return 
     else:
         print("HTTPS Support Testing Error. Exiting...")
         exit()
@@ -93,8 +104,6 @@ def versionHTML(supportHTTPS, host):
         "1.1", 
         host
     )
-    #conn.close()
-    #To-Do: Use regex to search HTML header for HTTP version
     return
 
 def findCookies(HTTPS, HTML, host):
@@ -106,23 +115,10 @@ def findCookies(HTTPS, HTML, host):
     )
     print("List of Cookies:")
     for (m) in re.findall(r"Set-Cookie: (.*?)=(.*?);.* (domain=(.*))?", resp):
-        domain = host[3:] + " (default)" if (m[3] == '') else m[3]
+        d = re.search(r".*?(\..*)", host).group(1) #get default host
+        domain = d + " (default)" if (m[3] == '') else m[3]
         print('name: {name}\tkey: {key}\tdomain: {domain}'.format(name=m[0], key=m[1], domain=domain))
-    #To-Do: Use regex to search the server response for cookies
     return
-
-def printServerInfo(https, html, cookies):
-    print(
-        "website: // To-Do //" + "\n"
-        "Support HTTPS: " + ("yes" if https else "no") + "\n"
-        "Newest supported HTTP version: " + str(html) + "\n"
-        "List of Cookies: " + cookies
-    )
-    
-#Status must be a string, to be parsed
-def getStatusCode(response):
-    status_code = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", response).group(2))
-    return status_code
 
 def initArgs():
     parser = argparse.ArgumentParser(description='Query a server.')
@@ -132,50 +128,42 @@ def initArgs():
 def main():
     args = initArgs()
     host = args.host
+    host = "www.bbc.com"
+    print("website: {host}".format(host=host))
     redirects = 0
     while(redirects < 2):
         httpsResult = supportHTTPS(host)
-        if isinstance(httpsResult, int): break
-        else: 
+        if isinstance(httpsResult, tuple):
             redirects += 1
-            if redirects >= 2:
-                print("Too many redirects. Exiting...")
-                exit()
+            host = httpsResult.netloc
+            protocol = httpsResult.scheme
+            path = httpsResult.path
+            if protocol == 'http':
+                httpsResult = 0
+                break
             else:
-                print('302 Status Code. Redirecting to {location}'.format(location=httpsResult))
-                host = supportHTTPS(httpsResult)
+                print('Redirecting to {location}'.format(location=host))
+        else:
+            break
+    if redirects >= 2:
+        print("Too many redirects. Exiting...")
+        exit()
     if httpsResult:
         print("Now proceed with other things using HTTPS")
         findCookies(1, "1.1", host)
-        '''
-        html = versionHTML(https, host) or "// To-Do //"
-        '''
     else:
         print("Now proceed with other things using HTTP")
-        findCookies(1, "1.1", host)
-        '''
-        html = versionHTML(https, host) or "// To-Do //"
-        '''
-    '''
-    html = versionHTML(https, host) or "// To-Do //"
-    cookies = findCookies() or "// To-Do //"
-    printServerInfo(https, html, cookies)
-    '''
+        findCookies(0, "1.1", host)
 
 main()
 
 '''
-initialize args
-redirects = 0
-while(redirects < 2):
-    get supporthttps result
-    if isinstance(httpsResult, int): break
-    else: 
-        redirects = redirects + 1
-        if redirects >= 2:
-            print("Too many redirects. Exiting...")
-            exit()
-        else:
-            print('302 Status Code. Redirecting to {location}'.format(location=httpsResult))
-            https = supportHTTPS(httpsResult)
+need to try SSL
+    if exception, back out and try non SSL
+        if doesn't work, exit program
+    if success code:
+        supports SSL
+    if redirect, save location and protocol, and try again with new parameters
+
+For redirects with paths: Just include them in the GET / section! They aren't part of the host
 '''
