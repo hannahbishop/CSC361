@@ -5,7 +5,7 @@ import re
 from urllib.parse import urlparse
 
 #global constants
-HTTPS_SUCCESS = [200, 404, 505]
+HTTPS_SUCCESS = [200, 404, 505, 503]
 REDIRECT = [301, 302]
 VERSION_SUCCESS = [200, 404]
 
@@ -35,24 +35,21 @@ def connectHTTP(host):
 #   0 if Does Not Support
 #   1 if Does Support
 #   New location if redirect code
-def supportHTTPS(host):
+def supportHTTPS(host, path = ""):
     try:
         resp = sendRequest (
             1, 
             "HEAD", 
             "1.1", 
-            host
+            host,
+            (path or "/"),
         )
-        print("Response: \n" + resp)
     except:
         print("Support HTTPS: no")
         return 0
     status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
     if status in HTTPS_SUCCESS: 
-        print(
-            "HTTP Status Code: " + str(status),
-            "Support HTTPS: yes"
-        )
+        print("Support HTTPS: yes")
         return 1
     elif status in REDIRECT:
         o = urlparse(re.search(r"Location: (.*)", resp).group(1))
@@ -65,19 +62,21 @@ def supportHTTPS(host):
             return o
         return 
     else:
-        print("HTTPS Support Testing Error. Exiting...")
+        print("HTTPS Support Testing Error: Unexpected status code ({status}). Exiting...".format(status=status))
         exit()
 
 #Sends an HTTP(S) request, and returns the response as a byte list.
 #Version must be in [1.0, 1.1, 2]
-def sendRequest(https, method, version, host):
+def sendRequest(https, method, version, host, path = ""):
     if (https):
         conn = connectHTTPS(host)
     else:
         conn = connectHTTP(host)
     conn.sendall(
         method.encode() +
-        b" / HTTP/" +
+        b" " +
+        (path or "/").encode() +
+        b" HTTP/" +
         version.encode() +
         b"\r\nHost: " + 
         host.encode() + 
@@ -113,11 +112,11 @@ def findCookies(HTTPS, HTML, host):
         HTML, 
         host
     )
-    print("List of Cookies:")
+    print("List of Cookies:\n")
     for (m) in re.findall(r"Set-Cookie: (.*?)=(.*?);.* (domain=(.*))?", resp):
         d = re.search(r".*?(\..*)", host).group(1) #get default host
         domain = d + " (default)" if (m[3] == '') else m[3]
-        print('name: {name}\tkey: {key}\tdomain: {domain}'.format(name=m[0], key=m[1], domain=domain))
+        print('\tname: {name}\n\tkey: {key}\n\tdomain: {domain}\n\n'.format(name=m[0], key=m[1], domain=domain))
     return
 
 def initArgs():
@@ -128,42 +127,29 @@ def initArgs():
 def main():
     args = initArgs()
     host = args.host
-    host = "www.bbc.com"
     print("website: {host}".format(host=host))
     redirects = 0
-    while(redirects < 2):
-        httpsResult = supportHTTPS(host)
+    httpsResult = supportHTTPS(host)
+    while(redirects < 3):
         if isinstance(httpsResult, tuple):
             redirects += 1
             host = httpsResult.netloc
             protocol = httpsResult.scheme
-            path = httpsResult.path
+            path = "" if (httpsResult.path == "/\r") else httpsResult.path
             if protocol == 'http':
                 httpsResult = 0
                 break
             else:
-                print('Redirecting to {location}'.format(location=host))
+                print('Redirecting to {host}{path}'.format(host=host, path=path))
+                httpsResult = supportHTTPS(host, path)
         else:
             break
-    if redirects >= 2:
+    if redirects >= 3:
         print("Too many redirects. Exiting...")
         exit()
     if httpsResult:
-        print("Now proceed with other things using HTTPS")
         findCookies(1, "1.1", host)
     else:
-        print("Now proceed with other things using HTTP")
         findCookies(0, "1.1", host)
 
 main()
-
-'''
-need to try SSL
-    if exception, back out and try non SSL
-        if doesn't work, exit program
-    if success code:
-        supports SSL
-    if redirect, save location and protocol, and try again with new parameters
-
-For redirects with paths: Just include them in the GET / section! They aren't part of the host
-'''
