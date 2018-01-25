@@ -75,7 +75,7 @@ def send_request(host, request, https):
     resp = resp.decode("utf-8")
     return resp
 
-def find_cookies(https, html, host):
+def find_cookies(https, host):
     resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
     print("List of Cookies:\n")
     for (m) in re.findall(r"Set-Cookie: (.*?)=(.*?);.* (domain=(.*))?", resp):
@@ -89,9 +89,22 @@ def init_args():
     parser.add_argument('host', type=str, help='a URL to query')
     return parser.parse_args()
 
+def version_http(https, host):
+    resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
+    status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
+    if status == 505:
+        return "1.1"
+    elif status in [200, 400]:
+        ctx = ssl.create_default_context()
+        ctx.set_alpn_protocols(['h2', 'spdy/3', 'http/1.1'])
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn = ctx.wrap_socket(sock, server_hostname=host)
+        conn.connect((host, 443))
+        return "2.0" if conn.selected_alpn_protocol() == "h2" else "1.1"
+    return
+
 def main():
-    #host = init_args().host
-    host = "www.aircanada.ca"
+    host = init_args().host
     print("website: {host}".format(host=host))
     https_result = support_https(host)
     redirects = 0
@@ -102,14 +115,13 @@ def main():
             protocol = https_result.scheme
             if protocol == 'http':
                 https_result = 0
-                break
-            else:
-                redirects += 1
-                host = https_result.netloc
-                path = "/" if (https_result.path == "/\r") else https_result.path
-                print('Redirecting to {host}{path}'.format(host=host, path=path))
-                https_result = support_https(host, path)
-    find_cookies(https_result, "1.1", host)
+            redirects += 1
+            host = https_result.netloc
+            path = "/" if (https_result.path == "/\r") else https_result.path
+            print('Redirecting to {host}{path}'.format(host=host, path=path))
+            https_result = support_https(host, path)
+    print("Version HTML: " + version_http(https_result, host))
+    find_cookies(https_result, host)
     return
 
 main()
