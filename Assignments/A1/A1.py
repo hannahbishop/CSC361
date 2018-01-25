@@ -25,21 +25,15 @@ def connect_to_host(host, https):
         port = 80
         sock.connect((host, port))
         return sock
-    
+
 
 #Returns:
 #   0 if Does Not Support
 #   1 if Does Support
 #   New location if redirect code
-def supportHTTPS(host, path = ""):
+def support_https(host, path = ""):
     try:
-        resp = sendRequest (
-            1,
-            "HEAD",
-            "1.0",
-            host,
-            (path or "/"),
-        )
+        resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), 1)
     except:
         print("Support HTTPS: no")
         return 0
@@ -58,23 +52,15 @@ def supportHTTPS(host, path = ""):
             return o
         return
     else:
-        print("HTTPS Support Testing Error: Unexpected status code ({status}). Exiting...".format(status=status))
-        exit()
+        print("Unexpected status code in support_https(): ({status}). Exiting...".format(status=status))
+        sys.exit()
 
 #Sends an HTTP(S) request, and returns the response as a byte list.
 #Version must be in [1.0, 1.1, 2]
-def sendRequest(https, method, version, host, path = ""):
+#TODO: change path = "" to just path = "/"? and then you won't need the (path or "/") thing in the sendall method
+def send_request(host, request, https):
     conn = connect_to_host(host, https)
-    conn.sendall(
-        method.encode() +
-        b" " +
-        (path or "/").encode() +
-        b" HTTP/" +
-        version.encode() +
-        b"\r\nHost: " +
-        host.encode() +
-        b"\r\n\r\n"
-    )
+    conn.sendall(request)
     resp = b""
     try:
         while True:
@@ -88,23 +74,8 @@ def sendRequest(https, method, version, host, path = ""):
     resp = resp.decode("utf-8")
     return resp
 
-def versionHTML(supportHTTPS, host):
-    https = 1 if supportHTTPS else 0
-    resp = sendRequest(
-        https,
-        "HEAD",
-        "1.1",
-        host
-    )
-    return
-
-def findCookies(HTTPS, HTML, host):
-    resp = sendRequest (
-        HTTPS,
-        "HEAD",
-        HTML,
-        host
-    )
+def find_cookies(https, html, host):
+    resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
     print("List of Cookies:\n")
     for (m) in re.findall(r"Set-Cookie: (.*?)=(.*?);.* (domain=(.*))?", resp):
         d = re.search(r".*?(\..*)", host).group(1) #get default host
@@ -112,36 +83,36 @@ def findCookies(HTTPS, HTML, host):
         print('\tname: {name}\n\tkey: {key}\n\tdomain: {domain}\n\n'.format(name=m[0], key=m[1], domain=domain))
     return
 
-def initArgs():
+def init_args():
     parser = argparse.ArgumentParser(description='Query a server.')
     parser.add_argument('host', type=str, help='a URL to query')
     return parser.parse_args()
 
 def main():
-    host = initArgs().host
+    host = init_args().host
     print("website: {host}".format(host=host))
+    https_result = support_https(host)
     redirects = 0
-    httpsResult = supportHTTPS(host)
     while(redirects < 3):
-        if isinstance(httpsResult, tuple):
+        if isinstance(https_result, tuple):
             redirects += 1
-            host = httpsResult.netloc
-            protocol = httpsResult.scheme
-            path = "" if (httpsResult.path == "/\r") else httpsResult.path
+            host = https_result.netloc
+            protocol = https_result.scheme
+            path = "" if (https_result.path == "/\r") else https_result.path
             if protocol == 'http':
-                httpsResult = 0
+                https_result = 0
                 break
             else:
                 print('Redirecting to {host}{path}'.format(host=host, path=path))
-                httpsResult = supportHTTPS(host, path)
+                https_result = support_https(host, path)
         else:
             break
     if redirects >= 3:
         print("Too many redirects. Exiting...")
-        exit()
-    if httpsResult:
-        findCookies(1, "1.1", host)
+        sys.exit()
+    if https_result:
+        find_cookies(1, "1.1", host)
     else:
-        findCookies(0, "1.1", host)
+        find_cookies(0, "1.1", host)
 
 main()
