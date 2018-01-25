@@ -9,27 +9,23 @@ HTTPS_SUCCESS = [200, 404, 505, 503]
 REDIRECT = [301, 302]
 VERSION_SUCCESS = [200, 404]
 
-def createSSL(host):
+def connect_to_host(host, https):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1)
-    context = ssl.create_default_context()
-    conn = context.wrap_socket(sock, server_hostname=host)
-    return conn
-
-def createSock():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
-    return sock
-
-def connectHTTPS(host):
-    conn = createSSL(host)
-    conn.connect((host, 443))
-    return conn
-
-def connectHTTP(host):
-    sock = createSock()
-    sock.connect((host, 80))
-    return sock
+    if https:
+        port = 443
+        try:
+            context = ssl.create_default_context()
+            secure = context.wrap_socket(sock, server_hostname=host)
+            secure.connect((host, port))
+        except ssl.SSLError:
+            raise Exception
+        return secure
+    else:
+        port = 80
+        sock.connect((host, port))
+        return sock
+    
 
 #Returns:
 #   0 if Does Not Support
@@ -38,9 +34,9 @@ def connectHTTP(host):
 def supportHTTPS(host, path = ""):
     try:
         resp = sendRequest (
-            1, 
-            "HEAD", 
-            "1.1", 
+            1,
+            "HEAD",
+            "1.0",
             host,
             (path or "/"),
         )
@@ -48,7 +44,7 @@ def supportHTTPS(host, path = ""):
         print("Support HTTPS: no")
         return 0
     status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
-    if status in HTTPS_SUCCESS: 
+    if status in HTTPS_SUCCESS:
         print("Support HTTPS: yes")
         return 1
     elif status in REDIRECT:
@@ -60,7 +56,7 @@ def supportHTTPS(host, path = ""):
         if o.scheme == 'https':
             #needs further checking
             return o
-        return 
+        return
     else:
         print("HTTPS Support Testing Error: Unexpected status code ({status}). Exiting...".format(status=status))
         exit()
@@ -68,18 +64,15 @@ def supportHTTPS(host, path = ""):
 #Sends an HTTP(S) request, and returns the response as a byte list.
 #Version must be in [1.0, 1.1, 2]
 def sendRequest(https, method, version, host, path = ""):
-    if (https):
-        conn = connectHTTPS(host)
-    else:
-        conn = connectHTTP(host)
+    conn = connect_to_host(host, https)
     conn.sendall(
         method.encode() +
         b" " +
         (path or "/").encode() +
         b" HTTP/" +
         version.encode() +
-        b"\r\nHost: " + 
-        host.encode() + 
+        b"\r\nHost: " +
+        host.encode() +
         b"\r\n\r\n"
     )
     resp = b""
@@ -94,22 +87,22 @@ def sendRequest(https, method, version, host, path = ""):
         pass
     resp = resp.decode("utf-8")
     return resp
-    
+
 def versionHTML(supportHTTPS, host):
     https = 1 if supportHTTPS else 0
     resp = sendRequest(
-        https, 
-        "HEAD", 
-        "1.1", 
+        https,
+        "HEAD",
+        "1.1",
         host
     )
     return
 
 def findCookies(HTTPS, HTML, host):
     resp = sendRequest (
-        HTTPS, 
-        "HEAD", 
-        HTML, 
+        HTTPS,
+        "HEAD",
+        HTML,
         host
     )
     print("List of Cookies:\n")
@@ -125,8 +118,7 @@ def initArgs():
     return parser.parse_args()
 
 def main():
-    args = initArgs()
-    host = args.host
+    host = initArgs().host
     print("website: {host}".format(host=host))
     redirects = 0
     httpsResult = supportHTTPS(host)
