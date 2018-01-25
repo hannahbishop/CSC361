@@ -12,6 +12,11 @@ VERSION_SUCCESS = [200, 404]
 def connect_to_host(host, https):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1)
+    try:
+        ip_address = socket.gethostbyname(host)
+    except socket.gaierror:
+        print("Error resolving host. Exiting.")
+        exit()
     if https:
         port = 443
         try:
@@ -26,13 +31,12 @@ def connect_to_host(host, https):
         sock.connect((host, port))
         return sock
 
-
 #Returns:
 #   0 if Does Not Support
 #   1 if Does Support
 #   New location if redirect code
 def support_https(host, path = "/"):
-        https_request = ("HEAD " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode()
+    https_request = ("HEAD " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode()
     try:
         resp = send_request(host, https_request, 1)
     except:
@@ -45,7 +49,6 @@ def support_https(host, path = "/"):
     elif status in REDIRECT:
         o = urlparse(re.search(r"Location: (.*)", resp).group(1))
         if o.scheme == 'http':
-            #redirect url is http, so https not supported
             print("Support HTTPS: no")
             return o
         if o.scheme == 'https':
@@ -54,7 +57,7 @@ def support_https(host, path = "/"):
         return
     else:
         print("Unexpected status code in support_https(): ({status}). Exiting...".format(status=status))
-        sys.exit()
+        exit()
 
 def send_request(host, request, https):
     conn = connect_to_host(host, https)
@@ -87,30 +90,26 @@ def init_args():
     return parser.parse_args()
 
 def main():
-    host = init_args().host
+    #host = init_args().host
+    host = "www.aircanada.ca"
     print("website: {host}".format(host=host))
     https_result = support_https(host)
     redirects = 0
-    while(redirects < 3):
-        if isinstance(https_result, tuple):
-            redirects += 1
-            host = https_result.netloc
+    while(redirects <= 3):
+        if isinstance(https_result, int):
+            break
+        else:            
             protocol = https_result.scheme
-            path = "" if (https_result.path == "/\r") else https_result.path
             if protocol == 'http':
                 https_result = 0
                 break
             else:
+                redirects += 1
+                host = https_result.netloc
+                path = "/" if (https_result.path == "/\r") else https_result.path
                 print('Redirecting to {host}{path}'.format(host=host, path=path))
                 https_result = support_https(host, path)
-        else:
-            break
-    if redirects >= 3:
-        print("Too many redirects. Exiting...")
-        sys.exit()
-    if https_result:
-        find_cookies(1, "1.1", host)
-    else:
-        find_cookies(0, "1.1", host)
+    find_cookies(https_result, "1.1", host)
+    return
 
 main()
