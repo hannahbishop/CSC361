@@ -31,9 +31,10 @@ def connect_to_host(host, https):
 #   0 if Does Not Support
 #   1 if Does Support
 #   New location if redirect code
-def support_https(host, path = ""):
+def support_https(host, path = "/"):
+        https_request = ("HEAD " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode()
     try:
-        resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), 1)
+        resp = send_request(host, https_request, 1)
     except:
         print("Support HTTPS: no")
         return 0
@@ -55,9 +56,6 @@ def support_https(host, path = ""):
         print("Unexpected status code in support_https(): ({status}). Exiting...".format(status=status))
         sys.exit()
 
-#Sends an HTTP(S) request, and returns the response as a byte list.
-#Version must be in [1.0, 1.1, 2]
-#TODO: change path = "" to just path = "/"? and then you won't need the (path or "/") thing in the sendall method
 def send_request(host, request, https):
     conn = connect_to_host(host, https)
     conn.sendall(request)
