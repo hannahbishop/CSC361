@@ -11,7 +11,7 @@ VERSION_SUCCESS = [200, 404]
 
 def connect_to_host(host, https):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
+    sock.settimeout(3)
     try:
         ip_address = socket.gethostbyname(host)
     except socket.gaierror:
