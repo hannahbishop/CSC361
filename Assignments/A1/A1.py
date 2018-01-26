@@ -5,7 +5,7 @@ import re
 from urllib.parse import urlparse
 
 #global constants
-HTTPS_SUCCESS = [200, 404, 505, 503]
+SUCCESS = [200, 404, 505, 503]
 REDIRECT = [301, 302]
 VERSION_SUCCESS = [200, 404]
 
@@ -43,7 +43,7 @@ def support_https(host, path = "/"):
         print("Support HTTPS: no")
         return 0
     status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
-    if status in HTTPS_SUCCESS:
+    if status in SUCCESS:
         print("Support HTTPS: yes")
         return 1
     elif status in REDIRECT:
@@ -75,8 +75,8 @@ def send_request(host, request, https):
     resp = resp.decode("utf-8")
     return resp
 
-def find_cookies(https, host):
-    resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
+def find_cookies(https, host, path="/"):
+    resp = send_request(host, ("HEAD " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
     print("List of Cookies:\n")
     for (m) in re.findall(r"Set-Cookie: (.*?)=(.*?);.* (domain=(.*))?", resp):
         d = re.search(r".*?(\..*)", host).group(1) #get default host
@@ -89,12 +89,12 @@ def init_args():
     parser.add_argument('host', type=str, help='a URL to query')
     return parser.parse_args()
 
-def version_http(https, host):
-    resp = send_request(host, ("HEAD / HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
+def version_http(https, host, path = "/"):
+    resp = send_request(host, ("HEAD " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n").encode(), https)
     status = int(re.search(r"^(HTTP/1.[0|1])\s(\d+)", resp).group(2))
     if status == 505:
         return "1.1"
-    elif status in [200, 400]:
+    elif status in SUCCESS:
         ctx = ssl.create_default_context()
         ctx.set_alpn_protocols(['h2', 'spdy/3', 'http/1.1'])
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -108,6 +108,7 @@ def main():
     print("website: {host}".format(host=host))
     https_result = support_https(host)
     redirects = 0
+    path = "/"
     while(redirects <= 3):
         if isinstance(https_result, int):
             break
@@ -115,13 +116,14 @@ def main():
             protocol = https_result.scheme
             if protocol == 'http':
                 https_result = 0
+                break
             redirects += 1
             host = https_result.netloc
             path = "/" if (https_result.path == "/\r") else https_result.path
             print('Redirecting to {host}{path}'.format(host=host, path=path))
             https_result = support_https(host, path)
-    print("Version HTML: " + version_http(https_result, host))
-    find_cookies(https_result, host)
+    print("Version HTML: " + version_http(https_result, host, path))
+    find_cookies(https_result, host, path)
     return
 
 main()
