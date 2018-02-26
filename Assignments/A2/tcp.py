@@ -23,21 +23,23 @@ def packet_loop(fp):
                 if connections[i] == conn:
                     #increment syn and fin if they are set
                     if (tcp.flags & 0b00000010) == 2:
-                        print("inc syn")
-                        connections[i].inc_syn()
+                        connections[i].inc_syn(ts)
                     if (tcp.flags & 0b00000001) == 1:
-                        print("inc fin")
-                        connections[i].inc_fin()
+                        connections[i].inc_fin(ts)
         else:
             connections.append(conn)
     for conn in connections:
-        conn.print()
+        if conn.is_complete():
+            print(conn.get_start_time())
+            print(conn.get_end_time())
+            print(conn.get_duration())
+            print("-----")
     return
 
 
 def main():
     #fs = init_args().fs
-    fp = open("trace.cap", mode="r+b")
+    fp = open("sample-capture-file", mode="r+b")
     packet_loop(fp)
     fp.close()
     return
