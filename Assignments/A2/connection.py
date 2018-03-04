@@ -8,9 +8,9 @@ class _Connection():
         self.dport = dport
         self.syn = flags[0]
         self.fin = flags[1]
-        self.rst = flags[2]
-        self.start_time = ts if flags[0] else None
+        self.start_time = None
         self.end_time = None
+        self.reset = None
 
     def __eq__(self, other):
         if (
@@ -42,8 +42,8 @@ class _Connection():
         self.end_time = ts
         return
 
-    def set_rst(self):
-        self.rst == 1
+    def set_reset(self):
+        self.reset == 1
 
     def get_start_time(self):
         return self.start_time
@@ -64,8 +64,8 @@ class _Connection():
         print("Destination Port: ", self.dport)
         print("Status: S{}F{}".format(self.syn, self.fin))
         if self.start_time:
-            print("Start Time: %.5f" %(self.start_time - 1139256717.834392))
+            print("Start Time: ", self.start_time)
         if self.end_time:
-            print("End Time: %.5f" %(self.end_time - 1139256717.834392))
-        if self.end_time and self.start_time:
-            print("Total Duration: %.5f" %(self.end_time - self.start_time))
+            print("End Time: ", self.end_time)
+        if self.start_time and self.end_time:
+            print("Total Duration: ", self.end_time - self.start_time)

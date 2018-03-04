@@ -17,22 +17,21 @@ def packet_loop(fp):
         eth = dpkt.ethernet.Ethernet(buf)
         ip = eth.data
         tcp = ip.data
+        src_ip = socket.inet_ntoa(ip.src)
+        dest_ip = socket.inet_ntoa(ip.dst)
         flags = format(tcp.flags, '08b')
         rst = int(flags[5])
         syn = int(flags[6])
         fin = int(flags[7])
-        src_ip = socket.inet_ntoa(ip.src)
-        dest_ip = socket.inet_ntoa(ip.dst)
-        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [rst, syn, fin], ts)
-        if conn not in connections:
+        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [syn, fin], ts)
+        try:
+            i = connections.index(conn)
+            if tcp.flags & 2 == 2:
+                connections[i].inc_syn(ts)
+            if tcp.flags & 1 == 1:
+                connections[i].inc_fin(ts)
+        except ValueError:
             connections.append(conn)
-        i = connections.index(conn)
-        if tcp.flags & 4 == 4:
-            connections[i].set_rst()
-        if tcp.flags & 2 == 2:
-            connections[i].inc_syn(ts)
-        if tcp.flags & 1 == 1:
-            connections[i].inc_fin(ts)
     count = 0
     for i, conn in enumerate(connections):
         count += 1
