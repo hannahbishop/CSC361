@@ -18,23 +18,28 @@ def packet_loop(fp):
         ip = eth.data
         tcp = ip.data
         flags = format(tcp.flags, '08b')
+        rst = int(flags[5])
         syn = int(flags[6])
         fin = int(flags[7])
         src_ip = socket.inet_ntoa(ip.src)
         dest_ip = socket.inet_ntoa(ip.dst)
-        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [syn, fin])
-        try:
-            i = connections.index(conn)
-            if tcp.flags & 2 == 2:
-                connections[i].inc_syn(ts)
-            if tcp.flags & 1 == 1:
-                connections[i].inc_fin(ts)
-        except ValueError:
+        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [rst, syn, fin], ts)
+        if conn not in connections:
             connections.append(conn)
-    for conn in connections:
-        if conn.is_complete():
-            conn.print_data()
-            print("--------")
+        i = connections.index(conn)
+        if tcp.flags & 4 == 4:
+            connections[i].set_rst()
+        if tcp.flags & 2 == 2:
+            connections[i].inc_syn(ts)
+        if tcp.flags & 1 == 1:
+            connections[i].inc_fin(ts)
+    count = 0
+    for i, conn in enumerate(connections):
+        count += 1
+        print("Connection {}\n".format(i + 1))
+        conn.print_data()
+        print("\n------------------------------\n")
+    print("Total Connections: {}\n".format(count))
     return
 
 
