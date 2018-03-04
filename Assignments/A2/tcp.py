@@ -2,6 +2,7 @@ import argparse
 import sys
 import dpkt
 from connection import _Connection
+import socket
 
 def init_args():
     parser = argparse.ArgumentParser(description='Analyze a TCP capture file.')
@@ -11,35 +12,35 @@ def init_args():
 def packet_loop(fp):
     connections = []
     pcap = dpkt.pcap.Reader(fp)
+    count = 0
     for ts, buf in pcap:
         eth = dpkt.ethernet.Ethernet(buf)
         ip = eth.data
         tcp = ip.data
         flags = format(tcp.flags, '08b')
-        conn = _Connection(ip.src, tcp.sport, ip.dst, tcp.dport, flags)
-        #messy, fix this. can I just edit in place? this looks terrible
-        if conn in connections:
-            for i in range(len(connections)):
-                if connections[i] == conn:
-                    #increment syn and fin if they are set
-                    if (tcp.flags & 0b00000010) == 2:
-                        connections[i].inc_syn(ts)
-                    if (tcp.flags & 0b00000001) == 1:
-                        connections[i].inc_fin(ts)
-        else:
+        syn = int(flags[6])
+        fin = int(flags[7])
+        src_ip = socket.inet_ntoa(ip.src)
+        dest_ip = socket.inet_ntoa(ip.dst)
+        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [syn, fin])
+        try:
+            i = connections.index(conn)
+            if tcp.flags & 2 == 2:
+                connections[i].inc_syn(ts)
+            if tcp.flags & 1 == 1:
+                connections[i].inc_fin(ts)
+        except ValueError:
             connections.append(conn)
     for conn in connections:
         if conn.is_complete():
-            print(conn.get_start_time())
-            print(conn.get_end_time())
-            print(conn.get_duration())
-            print("-----")
+            conn.print_data()
+            print("--------")
     return
 
 
 def main():
     #fs = init_args().fs
-    fp = open("sample-capture-file", mode="r+b")
+    fp = open("sample-capture-file", "rb")
     packet_loop(fp)
     fp.close()
     return

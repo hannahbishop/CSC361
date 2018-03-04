@@ -6,14 +6,13 @@ class _Connection():
         self.sport = sport
         self.dest_addr = dest_addr
         self.dport = dport
-        self.flags = flags
-        self.syn = 0
-        self.fin = 0
+        self.syn = flags[0]
+        self.fin = flags[1]
         self.start_time = None
         self.end_time = None
+        self.reset = None
 
     def __eq__(self, other):
-        equal = True
         if (
             self.src_addr == other.src_addr and
             self.sport == other.sport and
@@ -28,19 +27,9 @@ class _Connection():
             self.dport == other.sport
         ):
             return True
-        else:
-            return False
-
-    def print(self):
-        print(self.src_addr, self.sport, self.dest_addr, self.dport, self.flags)
-        print(self.syn, self.fin)
-        print(self.start_time, self.end_time, self.end_time - self.start_time)
-        return
+        return False
     
     def inc_syn(self, ts):
-        if self.syn == 2:
-            print("Cannot increment syn")
-            return -1
         self.syn += 1
         #only set the start time if it's the first SYN
         if self.syn == 1:
@@ -48,13 +37,13 @@ class _Connection():
         return
 
     def inc_fin(self, ts):
-        if self.fin == 2:
-            print("Cannot increment fin")
-            return -1
         self.fin += 1
         #always update the end time
         self.end_time = ts
         return
+
+    def set_reset(self):
+        self.reset == 1
 
     def get_start_time(self):
         return self.start_time
@@ -66,4 +55,14 @@ class _Connection():
         return self.end_time - self.start_time
 
     def is_complete(self):
-        return self.start_time and self.end_time
+        return self.syn and self.fin
+
+    def print_data(self):
+        print("Source Address: ", self.src_addr)
+        print("Destination Address: ", self.dest_addr)
+        print("Source Port: ", self.sport)
+        print("Destination Port: ", self.dport)
+        print("Status: S{}F{}".format(self.syn, self.fin))
+        #print("Start Time: ", self.start_time)
+        #print("End Time: ", self.end_time)
+        #print("Total Duration: ", self.end_time - self.start_time)
