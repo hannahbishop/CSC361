@@ -26,19 +26,33 @@ def packet_loop(fp):
         conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [rst, syn, fin], ts)
         try:
             i = connections.index(conn)
+            if tcp.flags & 4 == 4:
+                connections[i].set_rst()
             if tcp.flags & 2 == 2:
                 connections[i].inc_syn(ts)
             if tcp.flags & 1 == 1:
                 connections[i].inc_fin(ts)
         except ValueError:
             connections.append(conn)
-    count = 0
+    total = 0
+    complete = 0
+    incomplete = 0
+    reset = 0
     for i, conn in enumerate(connections):
-        count += 1
+        total += 1
         print("Connection {}\n".format(i + 1))
         conn.print_data()
+        if conn.is_complete():
+            complete += 1
+        else:
+            incomplete += 1
+        if conn.get_rst():
+            reset += 1
         print("\n------------------------------\n")
-    print("Total Connections: {}\n".format(count))
+    print("Total Connections: {}\n".format(total))
+    print("Number of reset TCP connections observed in the trace: {}\n".format(reset))
+    print("Number of TCP connections that were still open when the trace capture ended: {}\n".format(incomplete))
+    print("Number of complete TCP connections observed in the trace: {}\n".format(complete))
     return
 
 

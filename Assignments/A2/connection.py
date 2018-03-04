@@ -42,8 +42,8 @@ class _Connection():
         self.end_time = ts
         return
 
-    def set_reset(self):
-        self.rst == 1
+    def set_rst(self):
+        self.rst = 1
 
     def get_start_time(self):
         return self.start_time
@@ -56,6 +56,9 @@ class _Connection():
 
     def is_complete(self):
         return self.syn and self.fin
+
+    def get_rst(self):
+        return self.rst
 
     def print_data(self):
         print("Source Address: ", self.src_addr)
