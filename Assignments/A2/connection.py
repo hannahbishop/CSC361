@@ -6,11 +6,11 @@ class _Connection():
         self.sport = sport
         self.dest_addr = dest_addr
         self.dport = dport
-        self.syn = flags[0]
-        self.fin = flags[1]
-        self.start_time = None
-        self.end_time = None
-        self.reset = None
+        self.rst = flags[0]
+        self.syn = flags[1]
+        self.fin = flags[2]
+        self.start_time = ts if flags[1] else None
+        self.end_time = ts if flags[2] else None
 
     def __eq__(self, other):
         if (
@@ -43,7 +43,7 @@ class _Connection():
         return
 
     def set_reset(self):
-        self.reset == 1
+        self.rst == 1
 
     def get_start_time(self):
         return self.start_time

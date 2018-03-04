@@ -23,7 +23,7 @@ def packet_loop(fp):
         rst = int(flags[5])
         syn = int(flags[6])
         fin = int(flags[7])
-        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [syn, fin], ts)
+        conn = _Connection(src_ip, tcp.sport, dest_ip, tcp.dport, [rst, syn, fin], ts)
         try:
             i = connections.index(conn)
             if tcp.flags & 2 == 2:
