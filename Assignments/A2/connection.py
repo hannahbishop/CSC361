@@ -64,8 +64,8 @@ class _Connection():
         print("Destination Port: ", self.dport)
         print("Status: S{}F{}".format(self.syn, self.fin))
         if self.start_time:
-            print("Start Time: %.5f" % (self.start_time))
+            print("Start Time: %.5f" % (self.start_time - 1139256717.834392))
         if self.end_time:
-            print("End Time: %.5f" % (self.end_time))
+            print("End Time: %.5f" % (self.end_time - 1139256717.834392))
         if self.start_time and self.end_time:
             print("Total Duration: %.5f" % (self.end_time - self.start_time))
