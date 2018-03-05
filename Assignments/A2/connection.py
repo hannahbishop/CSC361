@@ -9,6 +9,8 @@ class _Connection():
         self.rst = 0
         self.syn = 0
         self.fin = 0
+        self.packets = [0,0]
+        self.bytes = [0,0]
         self.start_time = None
         self.end_time = None
 
@@ -52,13 +54,22 @@ class _Connection():
         return self.end_time
 
     def get_duration(self):
-        return self.end_time - self.start_time
+        if self.start_time and self.end_time:
+            return self.end_time - self.start_time
+        return -1
 
     def is_complete(self):
         return self.syn and self.fin
 
     def get_rst(self):
         return self.rst
+
+    def send_packet(self, src_addr, dest_addr):
+        if src_addr == self.src_addr and dest_addr == self.dest_addr:
+            self.packets[0] += 1
+        else:
+            self.packets[1] += 1
+        return
 
     def print_data(self):
         print("Source Address: ", self.src_addr)
@@ -72,3 +83,5 @@ class _Connection():
             print("End Time: %.5f" % (self.end_time - 1139256717.834392))
         if self.start_time and self.end_time:
             print("Total Duration: %.5f" % (self.end_time - self.start_time))
+        print("Number of packets sent from Source to Destination: ", self.packets[0])
+        print("Number of packets sent from Destination to Source: ", self.packets[1])
