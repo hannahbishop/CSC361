@@ -30,7 +30,7 @@ def add_connections(fp):
             connections[i].inc_syn(ts)
         if tcp.flags & 1 == 1:
             connections[i].inc_fin(ts)
-        connections[i].send_packet(src_ip, dest_ip, len(tcp.data))
+        connections[i].send_packet(src_ip, dest_ip, len(tcp.data), tcp.win)
     return connections
 
 def analyze_connections(connections):
@@ -41,6 +41,12 @@ def analyze_connections(connections):
     max_duration = 0
     min_duration = 99999999999
     total_duration = 0
+    max_packets = 0
+    min_packets = 99999999999
+    total_packets = 0
+    max_win = 0
+    min_win = 99999999999
+    total_win = 0
     for i, conn in enumerate(connections):
         num_connections += 1
         print("Connection {}\n".format(i + 1))
@@ -48,11 +54,24 @@ def analyze_connections(connections):
         if conn.is_complete():
             complete += 1
             duration = conn.get_duration()
+            packets = conn.get_num_packets()
+            win = conn.get_win()
+            total_packets += packets
             total_duration += duration
             if duration > max_duration:
                 max_duration = duration
             if duration < min_duration:
                 min_duration = duration
+            if packets > max_packets:
+                max_packets = packets
+            if packets < min_packets:
+                min_packets = packets
+            for win in win:
+                total_win += win
+                if win > max_win:
+                    max_win = win
+                if win < min_win:
+                    min_win = win
         else:
             incomplete += 1
         if conn.get_rst():
@@ -65,10 +84,17 @@ def analyze_connections(connections):
     print("\n------------------------------\n")
     print("Complete Connections:\n")
     print("Minimum Time Duration: %.5f" % min_duration)
-    print("Maximum Time Duration: %.5f" % max_duration)
-    print("Average Time Duration: %.5f" % (total_duration/complete))
-    return
+    print("Mean Time Duration: %.5f" % (total_duration/complete))
+    print("Maximum Time Duration: %.5f\n" % max_duration)
 
+    print("Minimum Packets (both directions): ", min_packets)
+    print("Mean Packets (both directions): %.4f" % (total_packets/complete))
+    print("Maximum Packets (both directions): ", max_packets, "\n")
+    
+    print("Minimum receive window size (both directions): ", min_win)
+    print("Mean receive window size (both directions): %.4f" % (total_win/complete))
+    print("Maximum receive window size (both directions): ", max_win)
+    return
 
 def main():
     #fs = init_args().fs

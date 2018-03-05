@@ -13,6 +13,7 @@ class _Connection():
         self.bytes = [0,0]
         self.start_time = None
         self.end_time = None
+        self.win = [0, 0]
 
     def __eq__(self, other):
         if (
@@ -64,14 +65,22 @@ class _Connection():
     def get_rst(self):
         return self.rst
 
-    def send_packet(self, src_addr, dest_addr, len):
+    def send_packet(self, src_addr, dest_addr, len, win):
         if src_addr == self.src_addr and dest_addr == self.dest_addr:
             self.packets[0] += 1
             self.bytes[0] += len
+            self.win[0] = win
         else:
             self.packets[1] += 1
             self.bytes[1] += len
+            self.win[1] = win
         return
+
+    def get_num_packets(self):
+        return sum(self.packets)
+
+    def get_win(self):
+        return self.win
 
     def print_data(self):
         print("Source Address: ", self.src_addr)
