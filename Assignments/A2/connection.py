@@ -64,11 +64,13 @@ class _Connection():
     def get_rst(self):
         return self.rst
 
-    def send_packet(self, src_addr, dest_addr):
+    def send_packet(self, src_addr, dest_addr, len):
         if src_addr == self.src_addr and dest_addr == self.dest_addr:
             self.packets[0] += 1
+            self.bytes[0] += len
         else:
             self.packets[1] += 1
+            self.bytes[1] += len
         return
 
     def print_data(self):
@@ -85,3 +87,7 @@ class _Connection():
             print("Total Duration: %.5f" % (self.end_time - self.start_time))
         print("Number of packets sent from Source to Destination: ", self.packets[0])
         print("Number of packets sent from Destination to Source: ", self.packets[1])
+        print("Total number of packets: ", sum(self.packets))
+        print("Number of bytes sent from Source to Destination: ", self.bytes[0])
+        print("Number of bytes sent from Destination to Source: ", self.bytes[1])
+        print("Total number of bytes: ", sum(self.bytes))

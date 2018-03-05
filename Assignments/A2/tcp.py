@@ -30,7 +30,7 @@ def add_connections(fp):
             connections[i].inc_syn(ts)
         if tcp.flags & 1 == 1:
             connections[i].inc_fin(ts)
-        connections[i].send_packet(src_ip, dest_ip)
+        connections[i].send_packet(src_ip, dest_ip, len(tcp.data))
     return connections
 
 def analyze_connections(connections):
