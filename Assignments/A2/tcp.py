@@ -47,33 +47,21 @@ def analyze_connections(connections):
     max_duration = max_packets = max_win = 0
     total_duration = total_packets = total_win = 0
 
+    durations = []
+    rtt = []
+    packets = []
+    win = []
+
     for i, conn in enumerate(connections):
         num_connections += 1
         print("Connection {}\n".format(i + 1))
         conn.print_data()
-        rtt = []
         if conn.is_complete():
             complete += 1
-            duration = conn.get_duration()
-            packets = conn.get_num_packets()
-            win = conn.get_win()
+            durations.append(conn.get_duration())
+            packets.append(conn.get_num_packets())
+            win += conn.get_win()
             rtt += conn.get_rtt()
-            total_packets += packets
-            total_duration += duration
-            if duration > max_duration:
-                max_duration = duration
-            if duration < min_duration:
-                min_duration = duration
-            if packets > max_packets:
-                max_packets = packets
-            if packets < min_packets:
-                min_packets = packets
-            for win in win:
-                total_win += win
-                if win > max_win:
-                    max_win = win
-                if win < min_win:
-                    min_win = win
         else:
             incomplete += 1
         if conn.get_rst():
@@ -85,17 +73,17 @@ def analyze_connections(connections):
     print("Number of complete TCP connections observed in the trace: {}".format(complete))
     print("\n------------------------------\n")
     print("Complete Connections:\n")
-    print("Minimum Time Duration: %.5f" % min_duration)
-    print("Mean Time Duration: %.5f" % (total_duration/complete))
-    print("Maximum Time Duration: %.5f\n" % max_duration)
+    print("Minimum Time Duration: %.5f" % min(durations))
+    print("Mean Time Duration: %.5f" % (sum(durations)/complete))
+    print("Maximum Time Duration: %.5f\n" % max(durations))
 
-    print("Minimum Packets (both directions): ", min_packets)
-    print("Mean Packets (both directions): %.4f" % (total_packets/complete))
-    print("Maximum Packets (both directions): ", max_packets, "\n")
+    print("Minimum Packets (both directions): ", min(packets))
+    print("Mean Packets (both directions): ", sum(packets)/complete)
+    print("Maximum Packets (both directions): ", max(packets), "\n")
     
-    print("Minimum receive window size (both directions): ", min_win)
-    print("Mean receive window size (both directions): %.4f" % (total_win/complete))
-    print("Maximum receive window size (both directions): ", max_win)
+    print("Minimum receive window size (both directions): ", min(win))
+    print("Mean receive window size (both directions): %.4f" % (sum(win)/complete))
+    print("Maximum receive window size (both directions): ", max(win), "\n")
 
     print("Minimum RTT value: ", min(rtt))
     print("Mean RTT value: ", sum(rtt)/len(rtt))
