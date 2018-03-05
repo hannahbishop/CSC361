@@ -1,16 +1,16 @@
 import time
 
 class _Connection():
-    def __init__(self, src_addr, sport, dest_addr, dport, flags, ts):
+    def __init__(self, src_addr, sport, dest_addr, dport):
         self.src_addr = src_addr
         self.sport = sport
         self.dest_addr = dest_addr
         self.dport = dport
-        self.rst = flags[0]
-        self.syn = flags[1]
-        self.fin = flags[2]
-        self.start_time = ts if flags[1] else None
-        self.end_time = ts if flags[2] else None
+        self.rst = 0
+        self.syn = 0
+        self.fin = 0
+        self.start_time = None
+        self.end_time = None
 
     def __eq__(self, other):
         if (
