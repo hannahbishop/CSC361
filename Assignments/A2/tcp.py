@@ -62,47 +62,74 @@ def packets(connections):
         packets.append(conn.get_num_packets())
     return min(packets), (sum(packets)/len(connections)), max(packets)
 
-def analyze_connections(connections):
-    num_connections = 0
-    num_complete = 0
-    reset = 0
-    complete = []
-
+def print_connections(connections):
     for i, conn in enumerate(connections):
-        num_connections += 1
-        print("Connection {}\n".format(i + 1))
+        print("Connection {}:".format(i + 1))
         conn.print_data()
-        if conn.is_complete():
-            complete.append(conn)
-            num_complete += 1
+        if i < len(connections) - 1:
+            print("\n+++++++++++++++++++++++++++++++++\n")
+    return
+
+def find_complete(connections):
+    complete = []
+    for conn in connections:
+       if conn.is_complete():
+           complete.append(conn)
+    return complete
+
+def find_num_reset(connections):
+    reset = 0
+    for conn in connections:
         if conn.get_rst():
             reset += 1
+    return reset
+
+def analyze_connections(connections):
+    #Grab all data
+    complete = find_complete(connections)
+    reset = find_num_reset(connections)
+    num_complete = len(complete)
     min_duration, mean_duration, max_duration = durations(complete)
     min_win, mean_win, max_win = wins(complete)
     min_rtt, mean_rtt, max_rtt = rtts(complete)
     min_packet, mean_packet, max_packet = packets(complete)
-    print("Number of TCP Connections: {}".format(num_connections))
-    print("Number of reset TCP connections observed in the trace: {}".format(reset))
-    print("Number of TCP connections that were still open when the trace capture ended: {}".format(num_connections - num_complete))
-    print("Number of complete TCP connections observed in the trace: {}".format(num_complete))
-    print("\n------------------------------\n")
-    print("Complete Connections:\n")
-    print("Minimum Time Duration: %.5f" % min_duration)
-    print("Mean Time Duration: %.5f" % mean_duration)
-    print("Maximum Time Duration: %.5f\n" % max_duration)
-
-    print("Minimum Packets (both directions): ", min_packet)
-    print("Mean Packets (both directions): ", mean_packet)
-    print("Maximum Packets (both directions): ", max_packet, "\n")
     
-    print("Minimum receive window size (both directions): ", min_win)
-    print("Mean receive window size (both directions): %.4f" % mean_win)
-    print("Maximum receive window size (both directions): ", max_win, "\n")
+    print("A) Total number of connections: {}".format(len(connections)))
 
+    print("\n-------------------------------------------------------------------\n")
+
+    print("B) Connections' details:\n")
+    print_connections(connections)
+
+    print("\n-------------------------------------------------------------------\n")
+
+    print("C) General:\n")
+    print("Number of complete TCP connections: {}".format(num_complete))
+    print("Number of reset TCP connections: {}".format(reset))
+    print("Number of TCP connections that were still open when the trace capture ended: {}\n".format(len(connections) - num_complete))
+
+    print("\n-------------------------------------------------------------------\n")
+
+    print("D) Complete TCP connections:\n")
+    #Duration
+    print("Minimum time duration: %.5f" % min_duration)
+    print("Mean time duration: %.5f" % mean_duration)
+    print("Maximum time duration: %.5f\n" % max_duration)
+    #RTT
     print("Minimum RTT value: ", min_rtt)
-    print("Mean RTT value: ", mean_rtt)
-    print("Maximum RTT value: ", max_rtt)
-    
+    print("Mean RTT value: %.5f" % mean_rtt)
+    print("Maximum RTT value: %.5f\n" % max_rtt)
+    #Packets
+    print("Minimum number of packets including both send/received: ", min_packet)
+    print("Mean number of packets including both send/received: ", mean_packet)
+    print("Maximum number of packets including both send/received: ", max_packet, "\n")
+    #Window size
+    print("Minimum receive window size including both send/received: ", min_win)
+    print("Mean receive window size including both send/received: %.4f" % mean_win)
+    print("Maximum receive window size including both send/received: ", max_win)
+
+    print("\n-------------------------------------------------------------------\n")
+
     return
 
 def main():

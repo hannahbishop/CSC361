@@ -95,16 +95,14 @@ class _Connection():
         print("Source Port: ", self.sport)
         print("Destination Port: ", self.dport)
         print("Status: S{}F{}".format(self.syn, self.fin))
-        if self.start_time:
+        if self.syn and self.fin:
             print("Start Time: %.5f" % (self.start_time - 1139256717.834392))
-        if self.end_time:
             print("End Time: %.5f" % (self.end_time - 1139256717.834392))
-        if self.start_time and self.end_time:
             print("Total Duration: %.5f" % (self.end_time - self.start_time))
-        print("Number of packets sent from Source to Destination: ", self.packets[0])
-        print("Number of packets sent from Destination to Source: ", self.packets[1])
-        print("Total number of packets: ", sum(self.packets))
-        print("Number of bytes sent from Source to Destination: ", self.bytes[0])
-        print("Number of bytes sent from Destination to Source: ", self.bytes[1])
-        print("Total number of bytes: ", sum(self.bytes))
-        print("\n------------------------------\n")
+            print("Number of packets sent from Source to Destination: ", self.packets[0])
+            print("Number of packets sent from Destination to Source: ", self.packets[1])
+            print("Total number of packets: ", sum(self.packets))
+            print("Number of bytes sent from Source to Destination: ", self.bytes[0])
+            print("Number of bytes sent from Destination to Source: ", self.bytes[1])
+            print("Total number of bytes: ", sum(self.bytes))
+        print("END")
