@@ -107,3 +107,4 @@ class _Connection():
         print("Number of bytes sent from Source to Destination: ", self.bytes[0])
         print("Number of bytes sent from Destination to Source: ", self.bytes[1])
         print("Total number of bytes: ", sum(self.bytes))
+        print("\n------------------------------\n")
