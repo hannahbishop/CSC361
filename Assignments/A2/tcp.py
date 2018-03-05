@@ -3,6 +3,7 @@ import sys
 import dpkt
 from connection import _Connection
 import socket
+import functools
 
 def init_args():
     parser = argparse.ArgumentParser(description='Analyze a TCP capture file.')
@@ -11,6 +12,7 @@ def init_args():
 
 def add_connections(fp):
     connections = []
+    rtt = {}
     pcap = dpkt.pcap.Reader(fp)
     for ts, buf in pcap:
         eth = dpkt.ethernet.Ethernet(buf)
@@ -31,6 +33,9 @@ def add_connections(fp):
         if tcp.flags & 1 == 1:
             connections[i].inc_fin(ts)
         connections[i].send_packet(src_ip, dest_ip, len(tcp.data), tcp.win)
+        rtt[tcp.seq + len(tcp.data)] = ts
+        if tcp.ack in rtt: 
+            connections[i].add_rtt(ts - rtt[tcp.ack])
     return connections
 
 def analyze_connections(connections):
@@ -38,24 +43,21 @@ def analyze_connections(connections):
     complete = 0
     incomplete = 0
     reset = 0
-    max_duration = 0
-    min_duration = 99999999999
-    total_duration = 0
-    max_packets = 0
-    min_packets = 99999999999
-    total_packets = 0
-    max_win = 0
-    min_win = 99999999999
-    total_win = 0
+    min_duration = min_packets = min_win = 99999999999
+    max_duration = max_packets = max_win = 0
+    total_duration = total_packets = total_win = 0
+
     for i, conn in enumerate(connections):
         num_connections += 1
         print("Connection {}\n".format(i + 1))
         conn.print_data()
+        rtt = []
         if conn.is_complete():
             complete += 1
             duration = conn.get_duration()
             packets = conn.get_num_packets()
             win = conn.get_win()
+            rtt += conn.get_rtt()
             total_packets += packets
             total_duration += duration
             if duration > max_duration:
@@ -94,6 +96,11 @@ def analyze_connections(connections):
     print("Minimum receive window size (both directions): ", min_win)
     print("Mean receive window size (both directions): %.4f" % (total_win/complete))
     print("Maximum receive window size (both directions): ", max_win)
+
+    print("Minimum RTT value: ", min(rtt))
+    print("Mean RTT value: ", sum(rtt)/len(rtt))
+    print("Maximum RTT value: ", max(rtt))
+    
     return
 
 def main():

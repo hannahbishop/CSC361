@@ -14,6 +14,7 @@ class _Connection():
         self.start_time = None
         self.end_time = None
         self.win = [0, 0]
+        self.rtt = []
 
     def __eq__(self, other):
         if (
@@ -81,6 +82,12 @@ class _Connection():
 
     def get_win(self):
         return self.win
+
+    def add_rtt(self, rtt):
+        self.rtt.append(rtt)
+
+    def get_rtt(self):
+        return self.rtt
 
     def print_data(self):
         print("Source Address: ", self.src_addr)
