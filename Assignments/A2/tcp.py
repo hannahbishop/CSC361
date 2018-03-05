@@ -77,7 +77,6 @@ def analyze_connections(connections):
             num_complete += 1
         if conn.get_rst():
             reset += 1
-        print("\n------------------------------\n")
     min_duration, mean_duration, max_duration = durations(complete)
     min_win, mean_win, max_win = wins(complete)
     min_rtt, mean_rtt, max_rtt = rtts(complete)
@@ -107,8 +106,8 @@ def analyze_connections(connections):
     return
 
 def main():
-    #fs = init_args().fs
-    fp = open("sample-capture-file", "rb")
+    fs = init_args().fs
+    fp = open(fs, "rb")
     connections = add_connections(fp)
     analyze_connections(connections)
     fp.close()
