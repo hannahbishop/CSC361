@@ -5,6 +5,8 @@ from dpkt.compat import compat_ord
 import sys
 from UDP import _UDP
 from ICMP import _ICMP
+from RespLinux import _RespLinux
+from RespWin import _RespWin
 
 def extract_datagrams(pcap) -> (list, list, set):
     (incoming, outgoing) = ([], [])
@@ -35,12 +37,12 @@ def extract_datagrams(pcap) -> (list, list, set):
                 outgoing.append(icmp)
             if icmp_type == 11 and win:
                 seq = ip.data.data.data.data['echo'].seq
-                icmp = _ICMP(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
-                incoming.append(icmp)
+                resp = _RespWin(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
+                incoming.append(resp)
             if icmp_type == 11 and linux:
-                seq = ip.data.data.data.data['echo'].seq
-                icmp = _ICMP(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
-                incoming.append(icmp)
+                port = ip.data.data.data.data.dport
+                resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, port)
+                incoming.append(resp)
         protocols.add(ip.p)
             
     return (incoming, outgoing, protocols)
@@ -53,7 +55,7 @@ def find_path(incoming: list, outgoing: list) -> list:
     for i, out in enumerate(outgoing):
         #UDP - match ports
         if out.p == 17:
-            print(incoming[0].sport)
+            print(incoming[0].port)
         #ICMP - match seq number
         if out.p == 1:
             resp = [resp for resp in incoming if resp.seq == out.seq]
