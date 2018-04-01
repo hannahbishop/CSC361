@@ -26,7 +26,7 @@ def extract_datagrams(pcap) -> (list, list, set):
         #UDP
         if ip.p == 17 and ip.ttl == len(outgoing) + 1:
             linux = True
-            udp = _UDP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.data.sport, ip.data.dport)
+            udp = _UDP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, ip.data.sport, ip.data.dport)
             outgoing.append(udp)
         #ICMP
         if ip.p == 1:
@@ -34,16 +34,16 @@ def extract_datagrams(pcap) -> (list, list, set):
             if icmp_type in (0, 8) and ip.ttl == len(outgoing) + 1:
                 win = True
                 seq = ip.data.data.seq
-                icmp = _ICMP(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
+                icmp = _ICMP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, seq)
                 outgoing.append(icmp)
             if icmp_type == 11 and win:
                 seq = ip.data.data.data.data['echo'].seq
-                resp = _RespWin(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
+                resp = _RespWin(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, seq)
                 incoming.append(resp)
             if icmp_type == 11 and linux:
                 sport = ip.data.data.data.data.sport
                 dport = ip.data.data.data.data.dport
-                resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, sport, dport)
+                resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, sport, dport)
                 incoming.append(resp)
         protocols.add(ip.p)
             
@@ -68,6 +68,11 @@ def find_path(incoming: list, outgoing: list) -> list:
     #add the last
     path.append(outgoing[0].dst)
     return path
+
+def find_frags(pcap):
+    #id = outgoing[0].id
+    #id_matches = [out for out in outgoing if out.id == id]
+    return
         
 def print_info(path, protocols):
     print("The IP address of the source node: ", path[0])
@@ -87,6 +92,7 @@ def main():
         (incoming, outgoing, protocols) = extract_datagrams(pcap)
         path = find_path(incoming, outgoing)
         print_info(path, protocols)
+        find_frags(outgoing)
 
 if __name__ == "__main__":
     main()
