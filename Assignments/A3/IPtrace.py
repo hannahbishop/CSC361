@@ -7,6 +7,7 @@ from UDP import _UDP
 from ICMP import _ICMP
 from RespLinux import _RespLinux
 from RespWin import _RespWin
+import re
 
 def extract_datagrams(pcap) -> (list, list, set):
     (incoming, outgoing) = ([], [])
@@ -40,8 +41,9 @@ def extract_datagrams(pcap) -> (list, list, set):
                 resp = _RespWin(ip_src, ip_dst, ts, ip.ttl, ip.p, seq)
                 incoming.append(resp)
             if icmp_type == 11 and linux:
-                port = ip.data.data.data.data.dport
-                resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, port)
+                sport = ip.data.data.data.data.sport
+                dport = ip.data.data.data.data.dport
+                resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, sport, dport)
                 incoming.append(resp)
         protocols.add(ip.p)
             
@@ -55,7 +57,9 @@ def find_path(incoming: list, outgoing: list) -> list:
     for i, out in enumerate(outgoing):
         #UDP - match ports
         if out.p == 17:
-            print(incoming[0].port)
+            resp = [resp for resp in incoming if resp.sport == out.sport]
+            if resp:
+                path.append(resp[0].src)
         #ICMP - match seq number
         if out.p == 1:
             resp = [resp for resp in incoming if resp.seq == out.seq]
@@ -65,19 +69,24 @@ def find_path(incoming: list, outgoing: list) -> list:
     path.append(outgoing[0].dst)
     return path
         
-def print_info(path):
-    print("Source Node: ", path[0])
-    print("Ultimate Destination Node: ", path[-1])
-    print("Intermediate Nodes:")
+def print_info(path, protocols):
+    print("The IP address of the source node: ", path[0])
+    print("The IP address of the ultimate destination node: ", path[-1])
+    print("The IP addresses of the intermediate destination nodes:")
     for i, ip in enumerate(path[1:-1]):
-        print("  ", ip)
+        print("    router {}: {}".format(i+1, ip))
+    print("The values in the protocol field of IP headers:")
+    for p in sorted(protocols):
+        p_string = str(dpkt.ip.IP.get_proto(p))
+        p_label = re.search(r"<class 'dpkt.*\.(.*)'>", p_string).group(1)
+        print("{}: {}".format(p, p_label))
 
 def main():
-    with open("trace1.pcap", "rb") as fp:
+    with open("traceroute-frag.pcap", "rb") as fp:
         pcap = dpkt.pcap.Reader(fp)
         (incoming, outgoing, protocols) = extract_datagrams(pcap)
         path = find_path(incoming, outgoing)
-        print_info(path)
+        print_info(path, protocols)
 
 if __name__ == "__main__":
     main()
