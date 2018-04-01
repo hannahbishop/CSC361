@@ -9,9 +9,10 @@ from RespLinux import _RespLinux
 from RespWin import _RespWin
 import re
 
-def extract_datagrams(pcap) -> (list, list, set):
+def extract_info(pcap) -> (list, list, set):
     (incoming, outgoing) = ([], [])
     protocols = set()
+    offsets = set()
     (linux, win) = (False, False)
     for ts, buf in pcap:
 
@@ -24,14 +25,14 @@ def extract_datagrams(pcap) -> (list, list, set):
         ip_src = socket.inet_ntoa(ip.src)
         ip_dst = socket.inet_ntoa(ip.dst)
         #UDP
-        if ip.p == 17 and ip.ttl == len(outgoing) + 1:
+        if ip.p == 17 and ip.data.dport >= 33434 and ip.data.dport <= 33529:
             linux = True
             udp = _UDP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, ip.data.sport, ip.data.dport)
             outgoing.append(udp)
         #ICMP
         if ip.p == 1:
             icmp_type = ip.data.type
-            if icmp_type in (0, 8) and ip.ttl == len(outgoing) + 1:
+            if icmp_type in (0, 8):
                 win = True
                 seq = ip.data.data.seq
                 icmp = _ICMP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, seq)
@@ -46,8 +47,10 @@ def extract_datagrams(pcap) -> (list, list, set):
                 resp = _RespLinux(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, sport, dport)
                 incoming.append(resp)
         protocols.add(ip.p)
+        if ip.ttl == 1:
+            offsets.add(ip.offset)
             
-    return (incoming, outgoing, protocols)
+    return (incoming, outgoing, protocols, offsets)
 
 def find_path(incoming: list, outgoing: list) -> list:
     path = []
@@ -69,12 +72,11 @@ def find_path(incoming: list, outgoing: list) -> list:
     path.append(outgoing[0].dst)
     return path
 
-def find_frags(pcap):
-    #id = outgoing[0].id
-    #id_matches = [out for out in outgoing if out.id == id]
-    return
-        
-def print_info(path, protocols):
+def find_frags(offsets):
+    num_frags = 0 if len(offsets) == 1 else len(offsets)
+    return num_frags, max(offsets)
+    
+def print_info(path, protocols, num_frags, offset):
     print("The IP address of the source node: ", path[0])
     print("The IP address of the ultimate destination node: ", path[-1])
     print("The IP addresses of the intermediate destination nodes:")
@@ -85,14 +87,17 @@ def print_info(path, protocols):
         p_string = str(dpkt.ip.IP.get_proto(p))
         p_label = re.search(r"<class 'dpkt.*\.(.*)'>", p_string).group(1)
         print("{}: {}".format(p, p_label))
+    print("The number of fragments created from the original datagram is: ", num_frags)
+    print("The offset of the last fragment is: ", offset)
+
 
 def main():
-    with open("traceroute-frag.pcap", "rb") as fp:
-        pcap = dpkt.pcap.Reader(fp)
-        (incoming, outgoing, protocols) = extract_datagrams(pcap)
-        path = find_path(incoming, outgoing)
-        print_info(path, protocols)
-        find_frags(outgoing)
+    fp = open("trace1.pcap", "rb")
+    pcap = dpkt.pcap.Reader(fp)
+    (incoming, outgoing, protocols, offsets) = extract_info(pcap)
+    path = find_path(incoming, outgoing)
+    num_frags, offset = find_frags(offsets)
+    print_info(path, protocols, num_frags, offset)
 
 if __name__ == "__main__":
     main()
