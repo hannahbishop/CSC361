@@ -24,8 +24,9 @@ def extract_info(pcap) -> (list, list, set):
         ip = eth.data
         ip_src = socket.inet_ntoa(ip.src)
         ip_dst = socket.inet_ntoa(ip.dst)
+
         #UDP
-        if ip.p == 17 and ip.data.dport >= 33434 and ip.data.dport <= 33529:
+        if ip.p == 17 and ip.data.dport >= 33400 and ip.data.dport <= 33600:
             linux = True
             udp = _UDP(ip_src, ip_dst, ts, ip.ttl, ip.p, ip.id, ip.data.sport, ip.data.dport)
             outgoing.append(udp)
@@ -60,7 +61,7 @@ def find_path(incoming: list, outgoing: list) -> list:
     for i, out in enumerate(outgoing):
         #UDP - match ports
         if out.p == 17:
-            resp = [resp for resp in incoming if resp.sport == out.sport]
+            resp = [resp for resp in incoming if resp.dport == out.dport]
             if resp:
                 path.append(resp[0].src)
         #ICMP - match seq number
@@ -70,7 +71,9 @@ def find_path(incoming: list, outgoing: list) -> list:
                 path.append(resp[0].src)
     #add the last
     path.append(outgoing[0].dst)
-    return path
+    filtered = set()
+    filtered_add = filtered.add
+    return [x for x in path if not (x in filtered or filtered_add(x))]
 
 def find_frags(offsets):
     num_frags = 0 if len(offsets) == 1 else len(offsets)
@@ -92,7 +95,7 @@ def print_info(path, protocols, num_frags, offset):
 
 
 def main():
-    fp = open("trace1.pcap", "rb")
+    fp = open("win_trace1.pcap", "rb")
     pcap = dpkt.pcap.Reader(fp)
     (incoming, outgoing, protocols, offsets) = extract_info(pcap)
     path = find_path(incoming, outgoing)
